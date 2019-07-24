@@ -17,7 +17,7 @@ closure color translucent(normal N, float sigma) [[ int builtin = 1 ]];
 closure color microfacet(string distribution, normal N, vector U, float xalpha,
                          float yalpha, float eta, int refract) [[ int builtin = 1 ]];
 closure color transparent() [[ int builtin = 1 ]];
-closure color bssrdf(vector mfp, color albedo, float g) [[ int builtin = 1 ]];
+closure color empirical_bssrdf(vector mfp, color albedo, float g) [[ int builtin = 1 ]];
 closure color metal(string distribution, normal N, vector U,
                     color n, color k, float xalpha, float yalpha) [[ int builtin = 1 ]];
 
@@ -99,7 +99,7 @@ closure color subsurface_layer(StandardSurfaceParameters p)
      return pow(p.subsurface_color, p.coat_gamma) * translucent(p.input_normal, 
                                                                     p.diffuse_roughness);
   else
-     return bssrdf(vector(p.subsurface_scale * p.subsurface_radius), 
+     return empirical_bssrdf(vector(p.subsurface_scale * p.subsurface_radius), 
                          pow(p.subsurface_color, p.coat_gamma), p.subsurface_anisotropy);
 }
 
@@ -174,7 +174,7 @@ shader standard_surface(
      color subsurface_radius = color(1),
      float subsurface_scale = 1,
      float subsurface_anisotropy = 0,
-     float sheen = 0,
+     float Sheen = 0,
      color sheen_color = color(1),
      float sheen_roughness = 0.3,
      int thin_walled = 0 [[ string widget = "boolean"]],
@@ -209,7 +209,7 @@ shader standard_surface(
   params.subsurface_radius = subsurface_radius;
   params.subsurface_scale = subsurface_scale;
   params.subsurface_anisotropy = subsurface_anisotropy;
-  params.sheen = sheen;
+  params.sheen = Sheen;
   params.sheen_color = sheen_color;
   params.sheen_roughness = sheen_roughness;
   params.thin_walled = thin_walled;
