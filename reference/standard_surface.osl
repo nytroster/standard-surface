@@ -17,7 +17,9 @@ closure color translucent(normal N, float sigma) [[ int builtin = 1 ]];
 closure color microfacet(string distribution, normal N, vector U, float xalpha,
                          float yalpha, float eta, int refract) [[ int builtin = 1 ]];
 closure color transparent() [[ int builtin = 1 ]];
-closure color empirical_bssrdf(vector mfp, color albedo, float g) [[ int builtin = 1 ]];
+closure color empirical_bssrdf(vector mfp, color albedo) [[ int builtin = 1 ]];
+closure color randomwalk_bssrdf(vector mfp, color albedo, float g) [[ int builtin = 1 ]];
+closure color randomwalkv2_bssrdf(vector mfp, color albedo, float g) [[ int builtin = 1 ]];
 closure color metal(string distribution, normal N, vector U,
                     color n, color k, float xalpha, float yalpha) [[ int builtin = 1 ]];
 
@@ -33,6 +35,7 @@ struct StandardSurfaceParameters
   float metalness;
   float transmission;
   color transmission_color;
+  string subsurface_type;
   float subsurface;
   color subsurface_color;
   color subsurface_radius;
@@ -98,9 +101,22 @@ closure color subsurface_layer(StandardSurfaceParameters p)
   if (p.thin_walled)
      return pow(p.subsurface_color, p.coat_gamma) * translucent(p.input_normal, 
                                                                     p.diffuse_roughness);
+  else if (p.subsurface_type == "randomwalk")
+     return p.sheen * p.sheen_color * sheen(N, p.sheen_roughness) +
+            (1 - p.sheen * reflectance(p.input_normal, p.specular_IOR)) * 
+            randomwalk_bssrdf(vector(p.subsurface_scale * p.subsurface_radius), 
+            pow(p.subsurface_color, p.coat_gamma), p.subsurface_anisotropy);
+  else if (p.subsurface_type == "randomwalkv2")
+     return p.sheen * p.sheen_color * sheen(N, p.sheen_roughness) +
+            (1 - p.sheen * reflectance(p.input_normal, p.specular_IOR)) * 
+            randomwalkv2_bssrdf(vector(p.subsurface_scale * p.subsurface_radius), 
+            pow(p.subsurface_color, p.coat_gamma), p.subsurface_anisotropy);
   else
-     return empirical_bssrdf(vector(p.subsurface_scale * p.subsurface_radius), 
-                         pow(p.subsurface_color, p.coat_gamma), p.subsurface_anisotropy);
+    return p.sheen * p.sheen_color * sheen(N, p.sheen_roughness) +
+            (1 - p.sheen * reflectance(p.input_normal, p.specular_IOR)) * 
+            empirical_bssrdf(vector(p.subsurface_scale * p.subsurface_radius), 
+            pow(p.subsurface_color, p.coat_gamma));
+
 }
 
 closure color base_layer(StandardSurfaceParameters p)
@@ -152,7 +168,7 @@ closure color coat_layer(StandardSurfaceParameters p)
       mix(color(1), clamp(1 - reflectance(p.coat_normal, p.coat_IOR), 0, 1) * p.coat_color, p.coat);
 }
 
-shader standard_surface(
+shader standard_surface_test(
      float base = .8,
      color base_color = color(1),
      float diffuse_roughness = 0,
@@ -169,6 +185,7 @@ shader standard_surface(
      float transmission_scatter = 0,
      float transmission_scatter_anisotropy = 0,
      float transmission_dispersion = 0,
+     string subsurface_type = "randomwalk",
      float subsurface = 0,
      color subsurface_color = color(1),
      color subsurface_radius = color(1),
@@ -204,6 +221,7 @@ shader standard_surface(
   params.metalness = clamp(metalness, 0.0, 1.0);
   params.transmission = clamp(transmission, 0.0, 1.0);
   params.transmission_color = transmission_color;
+  params.subsurface_type = subsurface_type;
   params.subsurface = clamp(subsurface, 0, 1);
   params.subsurface_color = subsurface_color;
   params.subsurface_radius = subsurface_radius;
